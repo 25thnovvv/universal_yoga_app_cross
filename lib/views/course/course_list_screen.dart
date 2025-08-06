@@ -6,8 +6,56 @@ import '../../utils/constants.dart';
 import '../../utils/theme.dart';
 import 'course_detail_screen.dart';
 
-class CourseListScreen extends StatelessWidget {
+class CourseListScreen extends StatefulWidget {
   const CourseListScreen({super.key});
+
+  @override
+  State<CourseListScreen> createState() => _CourseListScreenState();
+}
+
+class _CourseListScreenState extends State<CourseListScreen>
+    with SingleTickerProviderStateMixin {
+  bool _isSearchVisible = false;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, -0.5), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _toggleSearch() {
+    setState(() {
+      _isSearchVisible = !_isSearchVisible;
+    });
+
+    if (_isSearchVisible) {
+      _animationController.forward();
+    } else {
+      _animationController.reverse();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -15,10 +63,25 @@ class CourseListScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Yoga Courses'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              // TODO: Implement search functionality
+          AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return Container(
+                decoration: _isSearchVisible
+                    ? BoxDecoration(
+                        color: AppTheme.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      )
+                    : null,
+                child: IconButton(
+                  icon: Icon(
+                    Icons.search,
+                    color: _isSearchVisible ? AppTheme.primaryColor : null,
+                    size: _isSearchVisible ? 24 : 22,
+                  ),
+                  onPressed: _toggleSearch,
+                ),
+              );
             },
           ),
         ],
@@ -65,81 +128,102 @@ class CourseListScreen extends StatelessWidget {
           return Column(
             children: [
               // Search and Filter Section
-              Container(
-                padding: const EdgeInsets.all(AppConstants.defaultPadding),
-                child: Column(
-                  children: [
-                    // Search Bar
-                    TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search courses...',
-                        prefixIcon: const Icon(Icons.search),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
+              if (_isSearchVisible)
+                SlideTransition(
+                  position: _slideAnimation,
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Container(
+                      padding: const EdgeInsets.all(
+                        AppConstants.defaultPadding,
                       ),
-                      onChanged: (value) {
-                        courseViewModel.setSearchQuery(value);
-                      },
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Filter Chips
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          FilterChip(
-                            label: const Text('All'),
-                            selected:
-                                courseViewModel.selectedDay.isEmpty &&
-                                courseViewModel.selectedTime.isEmpty,
-                            onSelected: (selected) {
-                              if (selected) {
-                                courseViewModel.clearFilters();
-                              }
-                            },
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
                           ),
-                          const SizedBox(width: 8),
-                          ...AppConstants.daysOfWeek.map(
-                            (day) => Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                label: Text(day),
-                                selected: courseViewModel.selectedDay == day,
-                                onSelected: (selected) {
-                                  courseViewModel.setSelectedDay(
-                                    selected ? day : '',
-                                  );
-                                },
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Search Bar
+                          TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Search courses...',
+                              prefixIcon: const Icon(Icons.search),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
                               ),
                             ),
+                            onChanged: (value) {
+                              courseViewModel.setSearchQuery(value);
+                            },
                           ),
-                          const SizedBox(width: 8),
-                          ...AppConstants.timeSlots.map(
-                            (time) => Padding(
-                              padding: const EdgeInsets.only(right: 8),
-                              child: FilterChip(
-                                label: Text(time),
-                                selected: courseViewModel.selectedTime == time,
-                                onSelected: (selected) {
-                                  courseViewModel.setSelectedTime(
-                                    selected ? time : '',
-                                  );
-                                },
-                              ),
+                          const SizedBox(height: 16),
+
+                          // Day of Week Filter
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                FilterChip(
+                                  label: const Text('All'),
+                                  selected:
+                                      courseViewModel.selectedDay.isEmpty &&
+                                      courseViewModel.selectedTime.isEmpty,
+                                  onSelected: (selected) {
+                                    if (selected) {
+                                      courseViewModel.clearFilters();
+                                    }
+                                  },
+                                ),
+                                const SizedBox(width: 8),
+                                ...AppConstants.daysOfWeek.map(
+                                  (day) => Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: FilterChip(
+                                      label: Text(day),
+                                      selected:
+                                          courseViewModel.selectedDay == day,
+                                      onSelected: (selected) {
+                                        courseViewModel.setSelectedDay(
+                                          selected ? day : '',
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ...AppConstants.timeSlots.map(
+                                  (time) => Padding(
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: FilterChip(
+                                      label: Text(time),
+                                      selected:
+                                          courseViewModel.selectedTime == time,
+                                      onSelected: (selected) {
+                                        courseViewModel.setSelectedTime(
+                                          selected ? time : '',
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
 
               // Course List
               Expanded(

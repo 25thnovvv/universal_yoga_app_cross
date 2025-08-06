@@ -280,7 +280,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             }
                           },
                           icon: const Icon(Icons.add_shopping_cart),
-                          label: const Text('Register for all'),
+                          label: const Text('Book'),
                         ),
                       ),
                     ],
